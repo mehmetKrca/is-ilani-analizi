@@ -49,6 +49,7 @@ il/ilçe ve ilan metni okunur. Tüm ilanların telif ve içerik hakları ilgili 
 ## Klasör yapısı
 ```
 is-ilani-analizi/
+├── baslat.bat              # Windows: Ollama + model ısıtma + arayüzü tek tıkla açar
 ├── config.py               # tüm ayarlar (site adresleri, model, bekleme süresi)
 ├── scrapers/
 │   ├── common.py           # ortak fonksiyonlar (JSON-LD ayrıştırma, robots.txt, CSV)
@@ -121,6 +122,12 @@ python -m llm.disa_aktar           # arayüzün paylaşılan kopyasını (data/p
 ```
 streamlit run app/app.py
 ```
+**Windows'ta tek tıkla:** proje klasöründeki `baslat.bat`'a çift tıkla. Betik Ollama tepsi
+uygulamasını kapatır, `ollama serve`'ü CUDA kapalı (Vulkan GPU) başlatır, `qwen2.5:7b`'yi bir kez
+ısıtır, Streamlit'i açar ve tarayıcıda http://localhost:8501'i gösterir. Ayarlar yalnızca o
+pencereler için geçerlidir. Kapatmak için pencerede **Ctrl+C**'ye bas, "Toplu iş sonlandırılsın mı?"
+sorusuna **H** de (Ollama da kapanır) ya da iki pencereyi X ile kapat.
+
 | Sayfa | İçerik |
 |---|---|
 | **Genel Bakış** | sektör, il, seviye ve çalışma şekli dağılımları, aranabilir ilan listesi |
