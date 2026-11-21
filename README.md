@@ -2,6 +2,7 @@
 
 > ⚠️ **Yalnızca akademik amaçlıdır.** Bu depo bir Yapay Zekâ dersi proje ödevidir. Toplanan veri
 > ticari amaçla kullanılmaz, yeniden dağıtılmaz; ilan metinleri depoya konmamıştır.
+> Kod MIT lisanslıdır; veri yalnızca akademik amaçlıdır (bkz. [Lisans](#lisans)).
 
 Türkiye'deki iş ilanlarını iki farklı web scraping yöntemiyle (**Selenium** ve **BeautifulSoup**)
 toplayıp yerel bir büyük dil modeliyle (**Ollama, Qwen 2.5 7B**) yapılandırılmış veriye dönüştüren
@@ -135,3 +136,9 @@ Arayüz yerelde tam veriyi (`data/raw` + `data/processed`), bunlar yoksa `data/p
 Yalnızca herkese açık ilan içerikleri toplanır, kişisel veri toplanmaz; `robots.txt` kurallarına
 uyulur, bot korumaları atlatılmaz ve siteye yük bindirmemek için istekler yavaşlatılır.
 Ham ilan metinleri depoda paylaşılmaz. Veri **yalnızca akademik amaçla** kullanılır.
+
+## Lisans
+**Kod MIT lisanslıdır; veri yalnızca akademik amaçlıdır.** Kodun lisans metni için
+[LICENSE](LICENSE) dosyasına bakın. MIT lisansı yalnızca bu depodaki kodu kapsar;
+`data/public/` altındaki ilan künyeleri ve bunlardan türetilen analiz sonuçları üzerindeki
+haklar ilgili site ve işverenlere aittir ve bu veri ticari amaçla kullanılamaz.
