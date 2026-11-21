@@ -17,7 +17,8 @@ LLM her ilandan şunları çıkarır: pozisyon, sektör, seviye, deneyim yılı,
 sosyal beceriler, eğitim düzeyi, çalışma şekli ve yabancı diller. Çıktı, Ollama'nın
 *structured outputs* özelliğiyle bir JSON şemasına (Pydantic) uymaya zorlanır.
 
-**Canlı demo:** _(Streamlit Community Cloud bağlantısı buraya eklenecek)_
+**Canlı demo:** https://is-piyasasi-llm.streamlit.app/ (Streamlit Community Cloud; Canlı Analiz
+sayfası Ollama gerektirdiği için yalnızca yerel kurulumda çalışır)
 
 ## Veri kaynağı ve Kariyer.net bulgusu
 
