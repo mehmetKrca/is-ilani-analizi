@@ -1,0 +1,8 @@
+-r requirements.txt
+# Yerel kurulum: scraping (Selenium, BeautifulSoup) ve LLM (Ollama) için ek paketler
+requests
+beautifulsoup4
+selenium>=4.6
+openpyxl
+pydantic>=2
+ollama>=0.4

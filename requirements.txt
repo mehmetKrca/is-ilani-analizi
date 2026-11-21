@@ -1,9 +1,5 @@
-requests
-beautifulsoup4
-selenium>=4.6
-pandas
-openpyxl
-pydantic>=2
-ollama>=0.4
-streamlit
-plotly
+# Yalnızca web arayüzünün (Streamlit Community Cloud) ihtiyacı.
+# Scraping ve LLM için yerelde: pip install -r requirements-local.txt
+streamlit>=1.67
+pandas>=2.2
+plotly>=6.0

@@ -26,11 +26,12 @@ class IlanAnalizi(BaseModel):
     sektor: Literal[tuple(SEKTORLER)]
     seviye: Literal[tuple(SEVIYELER)]
     deneyim_yil: int = Field(description="İstenen minimum deneyim yılı; belirtilmemişse 0")
-    teknik_beceriler: list[str]
-    sosyal_beceriler: list[str]
+    # max_length -> JSON şemasında maxItems: modelin aynı listeyi sonsuza dek uzatmasını engeller
+    teknik_beceriler: list[str] = Field(max_length=15)
+    sosyal_beceriler: list[str] = Field(max_length=10)
     egitim: Literal[tuple(EGITIM)]
     calisma_sekli: Literal[tuple(CALISMA)]
-    yabanci_dil: list[str]
+    yabanci_dil: list[str] = Field(max_length=5)
 
 
 SISTEM_PROMPT = """Sen bir insan kaynakları uzmanısın. Sana verilen iş ilanını okuyup
@@ -104,14 +105,19 @@ def analiz_et(metin: str, model: str = config.ANA_MODEL, deneme: int = 2):
     """
     metin = metin[: config.MAKS_METIN_KARAKTER]
     t0 = time.perf_counter()
-    for _ in range(deneme):
+    for i in range(deneme):
+        # num_predict: tek yanıt için üst sınır (normal yanıt ~200-400 token). İlk deneme bozuk
+        # çıkarsa ikinci denemede tekrarları cezalandırıp yeniden dene.
+        secenek = {"temperature": 0, "num_ctx": 8192, "num_predict": 1024}
+        if i > 0:
+            secenek.update({"temperature": 0.2, "repeat_penalty": 1.15})
         try:
             yanit = ollama.chat(
                 model=model,
                 messages=[{"role": "system", "content": SISTEM_PROMPT},
                           {"role": "user", "content": f"İŞ İLANI:\n{metin}"}],
                 format=IlanAnalizi.model_json_schema(),
-                options={"temperature": 0, "num_ctx": 8192},
+                options=secenek,
             )
             veri = IlanAnalizi.model_validate_json(yanit["message"]["content"])
             return veri.model_dump(), round(time.perf_counter() - t0, 2), True

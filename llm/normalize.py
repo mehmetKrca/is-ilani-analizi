@@ -35,20 +35,79 @@ ESANLAMLILAR = {
 }
 
 
+# Kalıp kuralları: küçük harfe çevrilmiş beceri adında desen geçiyorsa standart ada eşlenir.
+# Sıra önemli: ilk eşleşen kural kazanır. ("Sabırlı ve dikkatli" -> Sabır)
+TEKNIK_KALIPLAR = [
+    (r"^ms office|microsoft office|^office\b|^ms (word|outlook|powerpoint)|^word$|^outlook$", "MS Office"),
+    (r"e-?fatura|e-?arşiv", "E-Fatura / E-Arşiv"),
+    (r"netsis", "Netsis"), (r"logo (tiger|go)|^logo$", "Logo"),
+    (r"muhasebe (ve erp )?program", "Muhasebe Programları"),
+    (r"özel güvenlik kimli", "Özel Güvenlik Kimliği"),
+    (r"^crm", "CRM"), (r"^erp", "ERP"),
+    (r"b sınıfı|ehliyet", "Ehliyet"),
+    (r"bahçe bakım", "Bahçe Bakımı"),
+]
+SOSYAL_KALIPLAR = [
+    (r"sabır", "Sabır"),
+    (r"analitik", "Analitik Düşünme"),
+    (r"problem|çözüm odaklı|kriz", "Problem Çözme"),
+    (r"takım|ekip|işbirliği|beraber çalış|koordine|koordinasyon", "Takım Çalışması"),
+    (r"liderlik", "Liderlik"),
+    (r"ikna|satış", "İkna Kabiliyeti"),
+    (r"müşteri", "Müşteri Odaklılık"),
+    (r"iletişim|ifade etme|anlatım|diksiyon|insan ilişki|dinleme", "İletişim"),
+    (r"sorumluluk", "Sorumluluk Sahibi"),
+    (r"dikkat|titiz|detay", "Dikkat ve Titizlik"),
+    (r"planla|planlı|organizasyon|zaman yönetimi|önceliklendir|takip", "Planlama ve Organizasyon"),
+    (r"disiplin|diziplin", "Disiplin"),
+    (r"düzen", "Düzenlilik"),
+    (r"güvenilir", "Güvenilirlik"),
+    (r"güler ?yüz|yardımsever", "Güler Yüzlülük"),
+    (r"hızlı|seri çalış|tempo", "Hızlı Çalışma"),
+    (r"yaratıcı", "Yaratıcılık"),
+    (r"uyum|esnek", "Uyum ve Esneklik"),
+    (r"öğrenmeye", "Öğrenmeye Açıklık"),
+]
+# Tek başına bir beceri anlatmayan, LLM'in görev tanımından aldığı genel kelimeler
+TEKNIK_KALDIR = {"yazılım", "makine", "üretim", "güvenlik", "güvenlik görevi", "e-posta",
+                 "elektronik", "arşiv", "fatura", "muhasebe", "telefon", "temizlik", "bilgisayar"}
+
+
 def anahtar(s: str) -> str:
-    s = s.strip().replace("İ", "i").lower().replace("̇", "")
+    s = s.strip().replace("İ", "i").replace("I", "ı").lower().replace("̇", "")
     return re.sub(r"\s+", " ", s)
 
 
-def normalize_et(beceri: str) -> str:
-    beceri = str(beceri).strip().strip(".,;:-•·")
-    return ESANLAMLILAR.get(anahtar(beceri), beceri)
+def _buyuk_bas(s: str) -> str:
+    """Türkçeye uygun ilk harf büyütme (i -> İ); geri kalanına dokunmaz (SQL, iOS gibi)."""
+    if not s:
+        return s
+    ilk = {"i": "İ", "ı": "I"}.get(s[0], s[0].upper())
+    return ilk + s[1:]
 
 
-def listeleri_normalize_et(listeler):
-    """Liste-listesi alır; eşanlamlıları birleştirir, büyük/küçük harf farklarını
-    en sık görülen yazıma çevirir, aynı ilandaki tekrarları atar."""
-    ilk = [[normalize_et(b) for b in (l or []) if str(b).strip()] for l in listeler]
+def normalize_et(beceri: str, tur: str = "teknik") -> str | None:
+    """Tek beceri adını standartlaştırır; atılması gerekiyorsa None döndürür."""
+    beceri = re.sub(r"\s+", " ", str(beceri)).strip().strip(".,;:-•·")
+    if not beceri:
+        return None
+    k = anahtar(beceri)
+    if k in ESANLAMLILAR:
+        return ESANLAMLILAR[k]
+    if tur == "teknik" and k in TEKNIK_KALDIR:
+        return None
+    kaliplar = {"teknik": TEKNIK_KALIPLAR, "sosyal": SOSYAL_KALIPLAR}.get(tur, [])
+    for desen, standart in kaliplar:
+        if re.search(desen, k):
+            return standart
+    return _buyuk_bas(beceri)
+
+
+def listeleri_normalize_et(listeler, tur: str = "teknik"):
+    """Liste-listesi alır; eşanlamlıları ve kalıpları birleştirir, büyük/küçük harf farklarını
+    en sık görülen yazıma çevirir, aynı ilandaki tekrarları atar.
+    tur: "teknik", "sosyal" veya "dil"."""
+    ilk = [[n for n in (normalize_et(b, tur) for b in (l or [])) if n] for l in listeler]
     yazimlar = {}
     for l in ilk:
         for b in l:

@@ -80,8 +80,10 @@ is-ilani-analizi/
    cd is-ilani-analizi
    python -m venv .venv
    .venv\Scripts\activate          (Windows)   |   source .venv/bin/activate   (macOS/Linux)
-   pip install -r requirements.txt
+   pip install -r requirements-local.txt
    ```
+   `requirements.txt` yalnızca arayüzün paketlerini içerir (Streamlit Cloud bunu kullanır);
+   `requirements-local.txt` buna scraping ve LLM paketlerini ekler.
 3. **Ollama**: https://ollama.com adresinden indirip kur, sonra modeli indir:
    ```
    ollama pull qwen2.5:7b
@@ -127,6 +129,13 @@ streamlit run app/app.py
 | **Canlı Analiz** | ilan metnini yapıştır, yerel LLM anında analiz etsin (yalnızca Ollama çalışan yerel kurulumda) |
 
 Arayüz yerelde tam veriyi (`data/raw` + `data/processed`), bunlar yoksa `data/public`'i kullanır.
+
+### Uyanık tutma (GitHub Actions)
+Streamlit Community Cloud, uzun süre ziyaret edilmeyen uygulamayı uykuya alır. `.github/workflows/keep-alive.yml`
+her 6 saatte bir (ve Actions sekmesinden elle) `scripts/keep_alive.py`'yi çalıştırır: betik uygulamayı
+Playwright ile headless Chromium'da açar, uyku ekranı çıkarsa "Yes, get this app back up!" butonuna basar
+ve uygulamanın yüklendiğini (iframe dahil) en fazla ~3 dakika bekleyerek doğrular. Token/secret gerekmez.
+Yerelde denemek için: `pip install playwright && python -m playwright install chromium && python scripts/keep_alive.py`
 
 ## Bilinen sınırlılıklar
 - 7B'lik bir yerel model kullanıldığı için çıkarımlar hatasız değildir; özellikle eğitim düzeyi ve

@@ -8,7 +8,6 @@ import json
 import sys
 from collections import Counter
 from datetime import datetime
-from itertools import combinations
 from pathlib import Path
 
 import pandas as pd
@@ -16,8 +15,10 @@ import plotly.express as px
 import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import config  # noqa: E402
-from llm.normalize import listeleri_normalize_et  # noqa: E402
+import config  # noqa: E402  (yalnızca yol/ayar sabitleri; ağır import yok)
+
+# Not: açılışı hızlandırmak için ollama, llm.sema ve llm.normalize gibi modüller yalnızca
+# kullanıldıkları yerde import edilir. Arayüz scraper modüllerini hiç import etmez.
 
 st.set_page_config(page_title="İş Piyasası Analizi", page_icon="📊", layout="wide")
 
@@ -192,6 +193,7 @@ SEVIYE_SIRA = ["Stajyer", "Junior", "Mid", "Senior", "Yönetici", "Belirtilmemi�
 def veri_yukle(raw_mtime: float, jsonl_mtime: float) -> pd.DataFrame | None:
     if not RAW_DOSYA.exists() or not JSONL.exists():
         return None
+    from llm.normalize import listeleri_normalize_et  # önbellekli: yalnızca veri değişince çalışır
     ham = pd.read_csv(RAW_DOSYA, encoding="utf-8-sig", dtype=str).fillna("")
     satirlar = []
     with open(JSONL, encoding="utf-8") as f:
@@ -207,9 +209,9 @@ def veri_yukle(raw_mtime: float, jsonl_mtime: float) -> pd.DataFrame | None:
     df = ham[["ilan_id", "baslik", "sirket", "sehir", "url", "yayin_tarihi"]].merge(llm, on="ilan_id")
     df["sehir"] = (df["sehir"].str.split("(").str[0].str.strip()
                    .replace("", "Belirtilmemiş"))
-    df["teknik_beceriler"] = listeleri_normalize_et(df["teknik_beceriler"])
-    df["sosyal_beceriler"] = listeleri_normalize_et(df["sosyal_beceriler"])
-    df["yabanci_dil"] = listeleri_normalize_et(df["yabanci_dil"])
+    df["teknik_beceriler"] = listeleri_normalize_et(df["teknik_beceriler"], "teknik")
+    df["sosyal_beceriler"] = listeleri_normalize_et(df["sosyal_beceriler"], "sosyal")
+    df["yabanci_dil"] = listeleri_normalize_et(df["yabanci_dil"], "dil")
     return df
 
 
@@ -234,10 +236,37 @@ def veri_ozeti(raw_mtime: float, jsonl_mtime: float) -> dict:
 
 
 def beceri_sikligi(seri: pd.Series, n: int) -> pd.DataFrame:
-    sayac = Counter(b for liste in seri for b in liste)
+    # Seri liste içerdiği için önbellek anahtarı demet (tuple) olarak verilir
+    return _beceri_sikligi(tuple(tuple(l) for l in seri), n)
+
+
+@st.cache_data(show_spinner=False)
+def _beceri_sikligi(listeler: tuple, n: int) -> pd.DataFrame:
+    sayac = Counter(b for liste in listeler for b in liste)
     t = pd.DataFrame(sayac.most_common(n), columns=["beceri", "ilan"])
-    t["oran"] = (t["ilan"] / max(len(seri), 1) * 100).round(1)
+    t["oran"] = (t["ilan"] / max(len(listeler), 1) * 100).round(1)
     return t
+
+
+@st.cache_data(show_spinner=False)
+def birlikte_matris(listeler: tuple, ust: tuple) -> pd.DataFrame:
+    """Seçili beceriler için 'aynı ilanda birlikte geçme' sayıları (simetrik matris)."""
+    from itertools import combinations
+    matris = pd.DataFrame(0, index=list(ust), columns=list(ust))
+    kume = set(ust)
+    for liste in listeler:
+        for a, b in combinations([x for x in liste if x in kume], 2):
+            matris.loc[a, b] += 1
+            matris.loc[b, a] += 1
+    return matris
+
+
+@st.cache_data(show_spinner=False)
+def istatistik_yukle(ist_mtime: float, raw_mtime: float) -> tuple[pd.DataFrame | None, int]:
+    """Scraping istatistiği ve toplanan benzersiz ilan sayısı (Yöntem Karşılaştırması)."""
+    ham = pd.read_csv(IST_DOSYA, encoding="utf-8-sig") if IST_DOSYA.exists() else None
+    adet = len(pd.read_csv(RAW_DOSYA, encoding="utf-8-sig", usecols=["ilan_id"])) if RAW_DOSYA.exists() else 0
+    return ham, adet
 
 
 # ------------------------------------------------------------------ sayfalar
@@ -376,11 +405,8 @@ def sayfa_beceri(t):
         if len(ust) < 2:
             grafik_karti("Birlikte istenen beceriler", "Karşılaştırma için yeterli teknik beceri yok.")
         else:
-            matris = pd.DataFrame(0, index=ust, columns=ust)
-            for liste in t["teknik_beceriler"]:
-                for a, b in combinations([x for x in liste if x in ust], 2):
-                    matris.loc[a, b] += 1
-                    matris.loc[b, a] += 1
+            from itertools import combinations
+            matris = birlikte_matris(tuple(tuple(l) for l in t["teknik_beceriler"]), tuple(ust))
             ciftler = [(matris.loc[a, b], a, b) for a, b in combinations(ust, 2)]
             en = max(ciftler)
             cumle = (f"En sık birlikte istenen ikili: <b>{e(en[1])} + {e(en[2])}</b> ({en[0]} ilan)."
@@ -437,10 +463,10 @@ def sayfa_yontem():
                "doğrulaması çıktı ve elle geçilmeye çalışılmasına rağmen ilanlar yüklenmedi. "
                "Sitenin bot korumasını atlatmaya çalışılmadı; veri, robots.txt kurallarına uyularak "
                "isbul.net'ten toplandı.", icon="🛡️")
-    if not IST_DOSYA.exists():
+    ham, toplanan = istatistik_yukle(_mtime(IST_DOSYA), _mtime(RAW_DOSYA))
+    if ham is None:
         st.info("Scraping istatistiği yok. Scraper'lar çalışınca otomatik oluşur.")
         return
-    ham = pd.read_csv(IST_DOSYA, encoding="utf-8-sig")
     s = ham[(ham["site"] != "kariyer") & (ham["deneme"] > 0)]  # Kariyer.net yukarıdaki notta
     if s.empty:
         st.info("Henüz başarılı bir scraping çalışması yok.")
@@ -455,8 +481,7 @@ def sayfa_yontem():
     hiz = ozet.set_index("yontem")["ilan_basina_sn"]
 
     c = st.columns(4)
-    kpi(c[0], "Toplanan benzersiz ilan", len(pd.read_csv(RAW_DOSYA, encoding="utf-8-sig"))
-        if RAW_DOSYA.exists() else 0)
+    kpi(c[0], "Toplanan benzersiz ilan", toplanan)
     kpi(c[1], "BeautifulSoup · ilan başına", f"{ondalik(hiz.get('BeautifulSoup', 0), 2)} sn")
     kpi(c[2], "Selenium · ilan başına", f"{ondalik(hiz.get('Selenium', 0), 2)} sn")
     kat = hiz.get("Selenium", 0) / hiz.get("BeautifulSoup", 1) if hiz.get("BeautifulSoup") else 0
@@ -521,9 +546,12 @@ def bilgi_karti(sutun, etiket: str, deger: str):
 def ollama_durumu() -> str | None:
     """Ollama'ya ulaşılabiliyorsa None, yoksa kısa bir hata açıklaması döndürür."""
     try:
-        import ollama
+        import ollama  # Streamlit Cloud'da kurulu değil (requirements-local.txt)
+    except ImportError:
+        return "sunucu"
+    try:
         modeller = {m.model for m in ollama.Client(timeout=2).list().models}
-    except Exception:
+    except Exception:  # sunucu kapalı / erişilemiyor
         return "sunucu"
     return None if config.ANA_MODEL in modeller else "model"
 
