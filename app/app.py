@@ -187,6 +187,7 @@ else:
     IST_DOSYA = config.PUBLIC_DIR / "scraping_istatistik.csv"
 BILGI_DOSYA = config.PUBLIC_DIR / "bilgi.json"
 SEVIYE_SIRA = ["Stajyer", "Junior", "Mid", "Senior", "Yönetici", "Belirtilmemiş"]
+DENEME_ESIGI = 10  # bu kadar veya daha az ilanlı scraping çalışmaları deneme sayılır, karşılaştırmaya girmez
 
 
 @st.cache_data
@@ -195,6 +196,11 @@ def veri_yukle(raw_mtime: float, jsonl_mtime: float) -> pd.DataFrame | None:
         return None
     from llm.normalize import listeleri_normalize_et  # önbellekli: yalnızca veri değişince çalışır
     ham = pd.read_csv(RAW_DOSYA, encoding="utf-8-sig", dtype=str).fillna("")
+    # Yerelde ilan metni var: eğitim etiketini metne göre doğrula (data/public'te zaten doğrulanmış)
+    metinler = {}
+    if "ilan_metni" in ham.columns:
+        from llm.dogrula import sonucu_dogrula
+        metinler = dict(zip(ham["ilan_id"], ham["baslik"] + "\n" + ham["ilan_metni"]))
     satirlar = []
     with open(JSONL, encoding="utf-8") as f:
         for s in f:
@@ -202,7 +208,10 @@ def veri_yukle(raw_mtime: float, jsonl_mtime: float) -> pd.DataFrame | None:
                 continue
             r = json.loads(s)
             if r["gecerli"]:
-                satirlar.append({"ilan_id": r["ilan_id"], **r["sonuc"]})
+                sonuc = r["sonuc"]
+                if r["ilan_id"] in metinler:
+                    sonuc, _ = sonucu_dogrula(sonuc, metinler[r["ilan_id"]])
+                satirlar.append({"ilan_id": r["ilan_id"], **sonuc})
     if not satirlar:
         return None
     llm = pd.DataFrame(satirlar).drop_duplicates("ilan_id", keep="last")
@@ -467,7 +476,8 @@ def sayfa_yontem():
     if ham is None:
         st.info("Scraping istatistiği yok. Scraper'lar çalışınca otomatik oluşur.")
         return
-    s = ham[(ham["site"] != "kariyer") & (ham["deneme"] > 0)]  # Kariyer.net yukarıdaki notta
+    # Kariyer.net yukarıdaki notta; 10 ilanlık kısa deneme çalışmaları da hariç (asıl toplama turları)
+    s = ham[(ham["site"] != "kariyer") & (ham["deneme"] > DENEME_ESIGI)]
     if s.empty:
         st.info("Henüz başarılı bir scraping çalışması yok.")
         return
@@ -515,7 +525,8 @@ def sayfa_yontem():
                 "| isbul.net sonucu | Başarılı | Başarılı |")
     with t2:
         st.caption(f"Her scraper çalışmasının kaydı (`data/{IST_DOSYA.parent.name}/{IST_DOSYA.name}`). Kariyer.net "
-                   "denemeleri 0 ilanla kayıtlı.")
+                   f"denemeleri 0 ilanla kayıtlı. {DENEME_ESIGI} ve daha az ilanlı deneme çalışmaları "
+                   "karşılaştırmaya dahil edilmedi.")
         st.dataframe(ham.rename(columns={"zaman": "Zaman", "yontem": "Yöntem", "site": "Site",
                                          "deneme": "Deneme", "basarili": "Başarılı", "hata": "Hata",
                                          "engellenen": "Engellenen", "toplam_sure_sn": "Toplam süre (sn)",

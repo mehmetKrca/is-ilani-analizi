@@ -34,18 +34,17 @@ Sitenin bot korumasını **atlatmaya çalışılmadı**. Bunun yerine bot doğru
 kullanıldı. İlan sayfalarındaki schema.org `JobPosting` (JSON-LD) verisinden başlık, şirket,
 il/ilçe ve ilan metni okunur. Tüm ilanların telif ve içerik hakları ilgili site ve işverenlere aittir.
 
-**Sonuç:** isbul.net'ten 40 farklı ilden **395 benzersiz ilan** toplandı. Aynı ilanlar üzerinde
-BeautifulSoup ilan başına **0,77 sn**, Selenium **2,09 sn** sürdü (bekleme hariç, ~2,7 kat fark);
-iki yöntem de %100 başarılı oldu.
+**Sonuç:** isbul.net'ten 40 farklı ilden **395 benzersiz ilan** toplandı. Asıl toplama turlarında
+(10 ilanlık denemeler hariç) BeautifulSoup ilan başına **0,82 sn** (100/100), Selenium **2,11 sn**
+(395/395) sürdü (bekleme hariç, ~2,6 kat fark); iki yöntem de %100 başarılı oldu.
 
 ## Ekran görüntüleri
 
-<!-- Görüntüleri docs/ekran/ klasörüne koyup aşağıdaki satırların yorumunu kaldır. -->
 | Genel Bakış | Beceri Analizi |
 |---|---|
-| <!-- ![Genel Bakış](docs/ekran/genel.png) --> _eklenecek_ | <!-- ![Beceri Analizi](docs/ekran/beceri.png) --> _eklenecek_ |
-| **Yöntem Karşılaştırması** | **Canlı Analiz** |
-| <!-- ![Yöntem Karşılaştırması](docs/ekran/yontem.png) --> _eklenecek_ | <!-- ![Canlı Analiz](docs/ekran/canli.png) --> _eklenecek_ |
+| ![Genel Bakış](docs/ekran/genel.png) | ![Beceri Analizi](docs/ekran/beceri.png) |
+| **Yöntem Karşılaştırması** | **Canlı Analiz** (yerel kurulum) |
+| ![Yöntem Karşılaştırması](docs/ekran/yontem.png) | ![Canlı Analiz](docs/ekran/canli.png) |
 
 ## Klasör yapısı
 ```
@@ -60,6 +59,7 @@ is-ilani-analizi/
 ├── llm/
 │   ├── sema.py             # JSON şeması + prompt + analiz fonksiyonu
 │   ├── normalize.py        # "JS"/"Javascript" -> "JavaScript" gibi beceri adı birleştirme
+│   ├── dogrula.py          # eğitim düzeyinin ilan metnine göre kurala dayalı doğrulanması
 │   ├── cikar.py            # tüm ilanları LLM'den geçirir
 │   ├── disa_aktar.py       # arayüz için ilan metni içermeyen hafif veri (data/public)
 │   ├── etiketle.py         # (sade sürümde kullanılmadı) elle etiketleme şablonu
@@ -140,6 +140,11 @@ Yerelde denemek için: `pip install playwright && python -m playwright install c
 ## Bilinen sınırlılıklar
 - 7B'lik bir yerel model kullanıldığı için çıkarımlar hatasız değildir; özellikle eğitim düzeyi ve
   teknik beceriler için prompt'a "sadece ilanda açıkça geçeni yaz" kuralları eklendi.
+- Eğitim düzeyi ayrıca kurala dayalı olarak doğrulanır (`llm/dogrula.py`): ilk prompt 395 ilanda
+  55 Doktora/Yüksek Lisans etiketi uydurdu (54'ünün metinde dayanağı yoktu); düzeltilmiş prompt
+  bunu sıfıra indirdi ama "lisans"ı "lise" ile karıştırdı. Etiket metinde geçmiyorsa metindeki en
+  düşük düzeye, hiç düzey yoksa "Belirtilmemiş"e çevrilir. Düzeltilen kayıtlarda modelin ilk cevabı
+  `data/public` içindeki `duzeltme` alanında saklanır.
 - Veri tek bir siteden ve belirli bir tarihte toplanmıştır; Türkiye iş piyasasının tamamını temsil etmez.
 
 ## Etik notlar

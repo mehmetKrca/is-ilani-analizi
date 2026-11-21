@@ -11,6 +11,7 @@ import ollama
 from pydantic import BaseModel, Field, ValidationError
 
 import config
+from llm.dogrula import sonucu_dogrula
 
 SEKTORLER = ["Yazılım/Bilişim", "Mühendislik", "Satış", "Pazarlama", "Finans/Muhasebe",
              "İnsan Kaynakları", "Sağlık", "Eğitim", "Lojistik", "Üretim",
@@ -120,7 +121,8 @@ def analiz_et(metin: str, model: str = config.ANA_MODEL, deneme: int = 2):
                 options=secenek,
             )
             veri = IlanAnalizi.model_validate_json(yanit["message"]["content"])
-            return veri.model_dump(), round(time.perf_counter() - t0, 2), True
+            sonuc, _ = sonucu_dogrula(veri.model_dump(), metin)  # eğitim düzeyi metinle uyuşmalı
+            return sonuc, round(time.perf_counter() - t0, 2), True
         except (ValidationError, json.JSONDecodeError):
             continue  # bozuk/eksik çıktı -> bir kez daha dene
     return None, round(time.perf_counter() - t0, 2), False
