@@ -1,0 +1,9 @@
+requests
+beautifulsoup4
+selenium>=4.6
+pandas
+openpyxl
+pydantic>=2
+ollama>=0.4
+streamlit
+plotly

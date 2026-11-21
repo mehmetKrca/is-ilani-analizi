@@ -1,0 +1,15 @@
+# Arayüz teması: tek ana renk, sade beyaz / açık gri zemin.
+[theme]
+base = "light"
+primaryColor = "#2F5BD3"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F4F6F9"
+textColor = "#1F2937"
+font = "sans-serif"
+
+[client]
+# Sağ üstteki menüde geliştirici seçeneklerini gösterme (menünün kendisi CSS ile gizleniyor)
+toolbarMode = "minimal"
+
+[browser]
+gatherUsageStats = false

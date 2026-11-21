@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# Ham veri: ilan metinleri, link listeleri, debug ekran görüntüsü/HTML'leri repoya girmez
+data/raw/*
+!data/raw/.gitkeep
+
+# LLM çıktıları (tam, eski ve deneme jsonl'ler). Paylaşılan hafif kopya data/public/ altında.
+data/processed/*
+!data/processed/.gitkeep
+
+# Elle etiketleme dosyaları (sade sürümde kullanılmadı)
+data/etiket/*
+!data/etiket/.gitkeep
+
+# Debug / geçici dosyalar
+*.log
+*.tmp
+debug_*
+liste_sayfa*.png
+liste_sayfa*.html
+
+# Gizli ayarlar ve editör/araç klasörleri
+.streamlit/secrets.toml
+.env
+.claude/
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini
+.DS_Store
